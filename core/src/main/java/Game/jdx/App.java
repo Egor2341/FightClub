@@ -4,6 +4,7 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 
 import com.badlogic.gdx.Graphics;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
@@ -14,7 +15,6 @@ import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FillViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
-
 
 
 /**
@@ -29,6 +29,8 @@ public class App extends ApplicationAdapter {
     private Viewport viewport;
     private Body chel;
     private Sprite sprite;
+    private float chelWidth;
+    private float chelHeight;
 
 
     @Override
@@ -67,13 +69,18 @@ public class App extends ApplicationAdapter {
         chel = world.createBody(chelDef);
 
         Texture img = new Texture("chel.png");
+        float attitude = (float) img.getHeight() / img.getWidth();
         sprite = new Sprite(img);
+        chelWidth = w / 50f;
+        chelHeight = w / 50f * attitude;
+        System.out.println(chelWidth + " " + chelHeight);
+        sprite.setSize(chelWidth, chelHeight);
         chel.setUserData(sprite);
-
+        chel.setFixedRotation(true);
 
 
         PolygonShape chelShape = new PolygonShape();
-        chelShape.setAsBox(img.getWidth() / 2f, img.getHeight() / 2f);
+        chelShape.setAsBox(chelWidth / 2f, chelHeight / 2f);
 
 
         FixtureDef fixtureDef = new FixtureDef();
@@ -94,17 +101,24 @@ public class App extends ApplicationAdapter {
     public void render() {
         float dt = Gdx.graphics.getDeltaTime();
         ScreenUtils.clear(0.15f, 0.15f, 0.2f, 1f);
-        debugRenderer.render(world, camera.combined);
+//        debugRenderer.render(world, camera.combined);
+        updatePerson(chel);
         batch.begin();
         Sprite chelSprite = (Sprite) chel.getUserData();
-        batch.draw(chelSprite, chel.getPosition().x - chelSprite.getWidth()/2f, chel.getPosition().y - chelSprite.getHeight()/2f);
+        batch.draw(chelSprite, chel.getPosition().x - chelSprite.getWidth() / 2f, chel.getPosition().y - chelSprite.getHeight() / 2f,
+            chelWidth, chelHeight);
         batch.end();
-//        doPhysicsStep(dt);
+        doPhysicsStep(dt);
     }
 
-    @Override
-    public void dispose() {
-        batch.dispose();
+
+    private void updatePerson(Body person) {
+        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
+            person.setLinearVelocity(chelWidth, person.getLinearVelocity().y);
+        }
+        else if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
+            person.setLinearVelocity(-chelWidth, person.getLinearVelocity().y);
+        }
     }
 
 
@@ -121,5 +135,10 @@ public class App extends ApplicationAdapter {
     public void resize(int width, int height) {
         viewport.update(width, height, true);
         camera.update();
+    }
+
+    @Override
+    public void dispose() {
+        batch.dispose();
     }
 }
