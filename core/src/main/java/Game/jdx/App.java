@@ -28,18 +28,23 @@ public class App extends ApplicationAdapter {
     private Box2DDebugRenderer debugRenderer;
     private Viewport viewport;
     private Body chel;
+    private Sprite sprite;
 
 
     @Override
     public void create() {
+
+        Graphics.DisplayMode dm = Gdx.graphics.getDisplayMode();
+        Gdx.graphics.setFullscreenMode(dm);
+
         float w = Gdx.graphics.getWidth();
         float h = Gdx.graphics.getHeight();
 
         camera = new OrthographicCamera(w, h);
+
         camera.position.set(camera.viewportWidth / 2f, camera.viewportHeight / 2f, 0);
-        viewport = new FillViewport(1280f, 720f, camera);
-        Graphics.DisplayMode dm = Gdx.graphics.getDisplayMode();
-        Gdx.graphics.setFullscreenMode(dm);
+
+        viewport = new FillViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), camera);
 
         world = new World(new Vector2(0, -10f), true);
 
@@ -50,7 +55,7 @@ public class App extends ApplicationAdapter {
         Body border = world.createBody(borderDef);
 
         PolygonShape borderBox = new PolygonShape();
-        borderBox.setAsBox(camera.viewportWidth/2f, camera.viewportHeight / 2f);
+        borderBox.setAsBox(camera.viewportWidth / 2f, camera.viewportHeight / 2f);
         border.createFixture(borderBox, 0.0f);
 
         borderBox.dispose();
@@ -62,11 +67,14 @@ public class App extends ApplicationAdapter {
         chel = world.createBody(chelDef);
 
         Texture img = new Texture("chel.png");
-        Sprite sprite = new Sprite(img);
+        sprite = new Sprite(img);
         chel.setUserData(sprite);
 
+
+
         PolygonShape chelShape = new PolygonShape();
-        chelShape.setAsBox(5f, 5f);
+        chelShape.setAsBox(img.getWidth() / 2f, img.getHeight() / 2f);
+
 
         FixtureDef fixtureDef = new FixtureDef();
         fixtureDef.shape = chelShape;
@@ -88,8 +96,10 @@ public class App extends ApplicationAdapter {
         ScreenUtils.clear(0.15f, 0.15f, 0.2f, 1f);
         debugRenderer.render(world, camera.combined);
         batch.begin();
+        Sprite chelSprite = (Sprite) chel.getUserData();
+        batch.draw(chelSprite, chel.getPosition().x - chelSprite.getWidth()/2f, chel.getPosition().y - chelSprite.getHeight()/2f);
         batch.end();
-        world.step(1/60f, 6, 2);
+//        doPhysicsStep(dt);
     }
 
     @Override
@@ -107,8 +117,9 @@ public class App extends ApplicationAdapter {
         }
     }
 
+    @Override
     public void resize(int width, int height) {
-        viewport.update( width, height, true);
+        viewport.update(width, height, true);
         camera.update();
     }
 }
