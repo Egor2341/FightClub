@@ -28,9 +28,12 @@ public class App extends ApplicationAdapter {
     private Box2DDebugRenderer debugRenderer;
     private Viewport viewport;
     private Body chel;
-    private Sprite sprite;
     private float chelWidth;
     private float chelHeight;
+    private Vector2 vel;
+    private Vector2 pos;
+    private boolean jump;
+    private float startY;
 
 
     @Override
@@ -48,32 +51,35 @@ public class App extends ApplicationAdapter {
 
         viewport = new FillViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), camera);
 
-        world = new World(new Vector2(0, -10f), true);
+        world = new World(new Vector2(0, -100f), true);
+        world.setContactListener(new ListenerClass());
 
-        BodyDef borderDef = new BodyDef();
-        borderDef.type = BodyDef.BodyType.StaticBody;
-        borderDef.position.set(camera.viewportWidth / 2f, camera.viewportHeight / 2f);
+        BodyDef groundDef = new BodyDef();
+        groundDef.type = BodyDef.BodyType.StaticBody;
+        groundDef.position.set(camera.viewportWidth / 2f, camera.viewportHeight / 20f);
 
-        Body border = world.createBody(borderDef);
+        Body ground = world.createBody(groundDef);
 
         PolygonShape borderBox = new PolygonShape();
-        borderBox.setAsBox(camera.viewportWidth / 2f, camera.viewportHeight / 2f);
-        border.createFixture(borderBox, 0.0f);
+        borderBox.setAsBox(camera.viewportWidth / 2f, camera.viewportHeight / 20f);
+        ground.createFixture(borderBox, 0.0f);
 
         borderBox.dispose();
 
+        Texture img = new Texture("chel.png");
+        float attitude = (float) img.getHeight() / img.getWidth();
+        chelWidth = w / 50f;
+        chelHeight = w / 50f * attitude;
         BodyDef chelDef = new BodyDef();
         chelDef.type = BodyDef.BodyType.DynamicBody;
-        chelDef.position.set(camera.viewportWidth / 2f, camera.viewportHeight / 2f);
+        startY = camera.viewportHeight / 10f + chelHeight / 2f;
+        chelDef.position.set(camera.viewportWidth / 2f, startY);
 
         chel = world.createBody(chelDef);
 
-        Texture img = new Texture("chel.png");
-        float attitude = (float) img.getHeight() / img.getWidth();
-        sprite = new Sprite(img);
-        chelWidth = w / 50f;
-        chelHeight = w / 50f * attitude;
-        System.out.println(chelWidth + " " + chelHeight);
+
+        Sprite sprite = new Sprite(img);
+
         sprite.setSize(chelWidth, chelHeight);
         chel.setUserData(sprite);
         chel.setFixedRotation(true);
@@ -85,7 +91,8 @@ public class App extends ApplicationAdapter {
 
         FixtureDef fixtureDef = new FixtureDef();
         fixtureDef.shape = chelShape;
-        fixtureDef.density = 0.5f;
+        fixtureDef.friction = 10f;
+
 
 
         Fixture fixture = chel.createFixture(fixtureDef);
@@ -101,8 +108,8 @@ public class App extends ApplicationAdapter {
     public void render() {
         float dt = Gdx.graphics.getDeltaTime();
         ScreenUtils.clear(0.15f, 0.15f, 0.2f, 1f);
-//        debugRenderer.render(world, camera.combined);
-        updatePerson(chel);
+        debugRenderer.render(world, camera.combined);
+        updateChel();
         batch.begin();
         Sprite chelSprite = (Sprite) chel.getUserData();
         batch.draw(chelSprite, chel.getPosition().x - chelSprite.getWidth() / 2f, chel.getPosition().y - chelSprite.getHeight() / 2f,
@@ -112,12 +119,25 @@ public class App extends ApplicationAdapter {
     }
 
 
-    private void updatePerson(Body person) {
-        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
-            person.setLinearVelocity(chelWidth, person.getLinearVelocity().y);
+    private void updateChel() {
+        vel = chel.getLinearVelocity();
+        pos = chel.getPosition();
+        if ((int) pos.y == (int) startY){
+            jump = false;
         }
-        else if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
-            person.setLinearVelocity(-chelWidth, person.getLinearVelocity().y);
+        if (!jump) {
+            if (Gdx.input.isKeyPressed(Input.Keys.A) && vel.x > -Constants.MAX_VELOCITY) {
+                chel.applyLinearImpulse(-5000f, 0, pos.x, pos.y, true);
+            }
+
+            if (Gdx.input.isKeyPressed(Input.Keys.D) && vel.x < Constants.MAX_VELOCITY) {
+                chel.applyLinearImpulse(5000f, 0, pos.x, pos.y, true);
+            }
+
+            if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE) && vel.x < Constants.MAX_VELOCITY) {
+                chel.applyLinearImpulse(0, 1000f, pos.x, pos.y, true);
+                jump = true;
+            }
         }
     }
 
