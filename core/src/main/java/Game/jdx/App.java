@@ -32,7 +32,7 @@ public class App extends ApplicationAdapter {
     private float chelHeight;
     private Vector2 vel;
     private Vector2 pos;
-    private boolean jump;
+    private static boolean jump;
     private float startY;
 
 
@@ -62,7 +62,9 @@ public class App extends ApplicationAdapter {
 
         PolygonShape borderBox = new PolygonShape();
         borderBox.setAsBox(camera.viewportWidth / 2f, camera.viewportHeight / 20f);
-        ground.createFixture(borderBox, 0.0f);
+
+        Fixture groundFixture = ground.createFixture(borderBox, 0.0f);
+        groundFixture.setUserData("Ground");
 
         borderBox.dispose();
 
@@ -91,11 +93,12 @@ public class App extends ApplicationAdapter {
 
         FixtureDef fixtureDef = new FixtureDef();
         fixtureDef.shape = chelShape;
-        fixtureDef.friction = 10f;
+        fixtureDef.friction = 5000f;
 
 
 
         Fixture fixture = chel.createFixture(fixtureDef);
+        fixture.setUserData("Chel");
 
         chelShape.dispose();
 
@@ -122,9 +125,6 @@ public class App extends ApplicationAdapter {
     private void updateChel() {
         vel = chel.getLinearVelocity();
         pos = chel.getPosition();
-        if ((int) pos.y == (int) startY){
-            jump = false;
-        }
         if (!jump) {
             if (Gdx.input.isKeyPressed(Input.Keys.A) && vel.x > -Constants.MAX_VELOCITY) {
                 chel.applyLinearImpulse(-5000f, 0, pos.x, pos.y, true);
@@ -160,5 +160,9 @@ public class App extends ApplicationAdapter {
     @Override
     public void dispose() {
         batch.dispose();
+    }
+
+    public static void setJump(boolean value){
+        jump = value;
     }
 }
