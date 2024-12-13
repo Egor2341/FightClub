@@ -4,8 +4,8 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 
 import com.badlogic.gdx.Graphics;
-import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -27,37 +27,84 @@ public class App extends ApplicationAdapter {
     private World world;
     private Box2DDebugRenderer debugRenderer;
     private Viewport viewport;
+    private Body chel;
+    private float chelWidth;
+    private float chelHeight;
+    private Vector2 vel;
+    private Vector2 pos;
+    private static boolean jump;
+    private float startY;
 
-    private Texture imageKozrev;
-    private Sprite spriteKozrev;
-    private Body personKozrev;
 
     @Override
     public void create() {
-        float w = Gdx.graphics.getWidth();
 
         Graphics.DisplayMode dm = Gdx.graphics.getDisplayMode();
         Gdx.graphics.setFullscreenMode(dm);
 
+        float w = Gdx.graphics.getWidth();
         float h = Gdx.graphics.getHeight();
 
         camera = new OrthographicCamera(w, h);
+
         camera.position.set(camera.viewportWidth / 2f, camera.viewportHeight / 2f, 0);
+
         viewport = new FillViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), camera);
-        world = new World(new Vector2(0, -10f), true);
+
+        world = new World(new Vector2(0, -100f), true);
+        world.setContactListener(new ListenerClass());
+
+        BodyDef groundDef = new BodyDef();
+        groundDef.type = BodyDef.BodyType.StaticBody;
+        groundDef.position.set(camera.viewportWidth / 2f, camera.viewportHeight / 20f);
+
+        Body ground = world.createBody(groundDef);
+
+        PolygonShape borderBox = new PolygonShape();
+        borderBox.setAsBox(camera.viewportWidth / 2f, camera.viewportHeight / 20f);
+
+        Fixture groundFixture = ground.createFixture(borderBox, 0.0f);
+        groundFixture.setUserData("Ground");
+
+        borderBox.dispose();
+
+        Texture img = new Texture("chel.png");
+        float attitude = (float) img.getHeight() / img.getWidth();
+        chelWidth = w / 50f;
+        chelHeight = w / 50f * attitude;
+        BodyDef chelDef = new BodyDef();
+        chelDef.type = BodyDef.BodyType.DynamicBody;
+        startY = camera.viewportHeight / 10f + chelHeight / 2f;
+        chelDef.position.set(camera.viewportWidth / 2f, startY);
+
+        chel = world.createBody(chelDef);
+
+
+        Sprite sprite = new Sprite(img);
+
+        sprite.setSize(chelWidth, chelHeight);
+        chel.setUserData(sprite);
+        chel.setFixedRotation(true);
+
+
+        PolygonShape chelShape = new PolygonShape();
+        chelShape.setAsBox(chelWidth / 2f, chelHeight / 2f);
+
+
+        FixtureDef fixtureDef = new FixtureDef();
+        fixtureDef.shape = chelShape;
+        fixtureDef.friction = 5000f;
+
+
+
+        Fixture fixture = chel.createFixture(fixtureDef);
+        fixture.setUserData("Chel");
+
+        chelShape.dispose();
+
 
         batch = new SpriteBatch();
         debugRenderer = new Box2DDebugRenderer();
-        imageKozrev = new Texture("Kozrev.png");
-        spriteKozrev = new Sprite(imageKozrev);
-        spriteKozrev.setSize(imageKozrev.getWidth(),imageKozrev.getHeight());
-
-        BodyDef bodyDef = new BodyDef();
-        bodyDef.position.set(10f, 15f); // Начальная позиция
-        bodyDef.type = BodyDef.BodyType.DynamicBody;
-        personKozrev = world.createBody(bodyDef);
-        createPerson(personKozrev);
-        createGround();
     }
 
     @Override
@@ -65,20 +112,33 @@ public class App extends ApplicationAdapter {
         float dt = Gdx.graphics.getDeltaTime();
         ScreenUtils.clear(0.15f, 0.15f, 0.2f, 1f);
         debugRenderer.render(world, camera.combined);
-        updatePerson(personKozrev);
-        spriteKozrev.setPosition(personKozrev.getPosition().x - 0.5f, personKozrev.getPosition().y - 0.5f);
+        updateChel();
         batch.begin();
-        Sprite sprite = (Sprite) personKozrev.getUserData();
-        batch.draw(sprite, personKozrev.getPosition().x - sprite.getWidth()/2f, personKozrev.getPosition().y - personKozrev.getHeight()/2f);
+        Sprite chelSprite = (Sprite) chel.getUserData();
+        batch.draw(chelSprite, chel.getPosition().x - chelSprite.getWidth() / 2f, chel.getPosition().y - chelSprite.getHeight() / 2f,
+            chelWidth, chelHeight);
         batch.end();
+        doPhysicsStep(dt);
     }
 
-    @Override
-    public void dispose() {
-        batch.dispose();
-        imageKozrev.dispose();
-        spriteKozrev.getTexture().dispose();
-        world.dispose();
+
+    private void updateChel() {
+        vel = chel.getLinearVelocity();
+        pos = chel.getPosition();
+        if (!jump) {
+            if (Gdx.input.isKeyPressed(Input.Keys.A) && vel.x > -Constants.MAX_VELOCITY) {
+                chel.applyLinearImpulse(-5000f, 0, pos.x, pos.y, true);
+            }
+
+            if (Gdx.input.isKeyPressed(Input.Keys.D) && vel.x < Constants.MAX_VELOCITY) {
+                chel.applyLinearImpulse(5000f, 0, pos.x, pos.y, true);
+            }
+
+            if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE) && vel.x < Constants.MAX_VELOCITY) {
+                chel.applyLinearImpulse(0, 1000f, pos.x, pos.y, true);
+                jump = true;
+            }
+        }
     }
 
 
@@ -97,46 +157,12 @@ public class App extends ApplicationAdapter {
         camera.update();
     }
 
-    private void updatePerson(Body person) {
-        if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
-            person.applyForceToCenter(new Vector2(-200, 0), true);
-        }
-        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
-            person.applyForceToCenter(new Vector2(200, 0), true);
-        }
-        if (Gdx.input.isKeyPressed(Input.Keys.UP)) {
-            person.applyForceToCenter(new Vector2(0, 500), true);
-        }
-        if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
-            person.applyForceToCenter(new Vector2(0, -100), true);
-        }
-
+    @Override
+    public void dispose() {
+        batch.dispose();
     }
 
-    private void createPerson(Body person) {
-        PolygonShape shape = new PolygonShape();
-        shape.setAsBox((float) imageKozrev.getWidth() /10, (float) imageKozrev.getHeight() /10); // Размеры персонажа
-        FixtureDef fixtureDef = new FixtureDef();
-        fixtureDef.shape = shape;
-        fixtureDef.density = 1;
-        fixtureDef.friction = 0.5f;
-        person.createFixture(fixtureDef);
-        shape.dispose();
-    }
-    private void createGround(){
-        BodyDef wallBodyDef = new BodyDef();
-        wallBodyDef.type = BodyDef.BodyType.StaticBody;
-        wallBodyDef.position.set(0, 0);
-        Body wallBody = world.createBody(wallBodyDef);
-
-        PolygonShape wallShape = new PolygonShape();
-        wallShape.setAsBox(25f, 1.0f);
-        FixtureDef wallFixtureDef = new FixtureDef();
-        wallFixtureDef.shape = wallShape;
-        wallFixtureDef.density = 0;
-        wallFixtureDef.friction = 0f;
-
-        wallBody.createFixture(wallFixtureDef);
-        wallShape.dispose();
+    public static void setJump(boolean value){
+        jump = value;
     }
 }
